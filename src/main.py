@@ -1,18 +1,29 @@
-# TODO:попробовать асинхронно пройтись по всем папкам для скачивания книг
-# https://stackoverflow.com/questions/9110593/asynchronous-requests-with-python-requests
-# TODO: как ускорить это говно???
+import uvicorn
 import requests
-from models import User, Document, Folder
+from fastapi import FastAPI
+from schemas import FolderSchema, DocumentSchema, UserSchema
 
 
-def main():
+app = FastAPI()
+
+
+@app.get("/folder/{folder_id}")
+async def get_folder(folder_id: int):
     s = requests.Session()
-    u = User()
+    u = UserSchema()
     u.login(s)
-    # http://elibrary.misis.ru/action.php?kt_path_info=ktcore.SecViewPlugin.actions.document&fDocumentId=9570
-    f = Folder(1, s)
-    print(f.json())
+    f = FolderSchema(folder_id, s)
+    return f.json()
+
+
+@app.get("/documents/{document_id}")
+async def get_document(document_id: int):
+    s = requests.Session()
+    u = UserSchema()
+    u.login(s)
+    d = DocumentSchema(document_id, "name")
+    return d.json()
 
 
 if __name__ == '__main__':
-    main()
+    uvicorn.run('main:app', reload=True, use_colors=True)
