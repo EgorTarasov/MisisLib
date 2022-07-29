@@ -10,24 +10,41 @@ id
 name
 """
 
-
-from tortoise.models import Model
-from tortoise import fields
-
-class User(Model):
-    id: fields.IntField(pk=True)
-    name = fields.TextField()
+from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy.orm import declarative_base, relationship
 
 
-class Folder(Model):
-    id: fields.IntField(pk=True)
-    name: fields.TextField()
+Base = declarative_base()
 
 
-class Document(Model): 
-    id: fields.IntField(pk=True)
-    name: fields.TextField()
-    folder: fields.ForeignKeyField(Folder, related_name="Folder")
+# class User(Base):
+#     __tablename__ = "users"
+#
+#     id = Column(Integer, primary_key=True)
+#     name = Column(String(40))
+#
+#     def __repl__(self):
+#         return f"User(id={self.id!r}, name={self.name!r}"
+#
+
+class Folder(Base):
+    __tablename__ = "folders"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(256))
+    parent_id = Column(Integer, ForeignKey("folders.id"))
+
+
+class Document(Base):
+    __tablename__ = "docs"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(256))
+    folder_id = Column(Integer, ForeignKey("folders.id"))
+    # folder = relationship("Folder", back_populates="folders")
+
+    def __repr__(self):
+        return f"Document(id={self.id!r}, name={self.name!r}, folder={self.folder!r}"
 
 
 # Initialise your models and database like so:

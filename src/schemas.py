@@ -4,6 +4,14 @@ TODO: Переписать весь функционал в модель
 import requests
 from bs4 import BeautifulSoup
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from models import Base, Folder, Document
+
+
+engine = create_engine("sqlite:///main.db", echo=True, future=True)
+Base.metadata.create_all(engine)
+
 
 ROOT_URL = 'http://elibrary.misis.ru/browse.php'
 
@@ -64,16 +72,19 @@ class DocumentSchema:
 class FolderSchema:
     _id: int
     name: str
+    parent_id: int
     items: dict[str, list[tuple[int, str]]]  # может содержать папки и документы
     FOLDER_URL = 'http://elibrary.misis.ru/browse.php?fFolderId={}&page_size=1000'
 
-    def __init__(self, id_: int, s: requests.Session):
+    def __init__(self, id_: int, parent_id: int,  s: requests.Session):
 
         self._id = id_
+        self.parent_id = parent_id
         self.items = {
             "folders": [],
             "documents": []
         }
+
         response = requests.Response()
         try:
             response = s.get(self.FOLDER_URL.format(self._id))
@@ -93,13 +104,19 @@ class FolderSchema:
             if 'fDocumentId' in a['href']:
                 id_ = int(a["href"][75:])
                 name = a.getText()
+                with Session(engine) as db_session:
+                    db_session.add(Document(id=id_, name=name, folder_id=self._id))
+                    db_session.commit()
                 self.items['documents'].append((id_, name))
-                # print(f'doc with id: {a["href"][75:]}')
+                print(f'doc with id: {a["href"][75:]}')
             elif 'fFolderId' in a['href']:
                 id_ = int(a["href"][46:])
                 name = a.getText()
-                self.items['folders'].append((id_, name))
-                # print(f'folder with id: {a["href"][46:]}')
+                with Session(engine) as db_session:
+                    db_session.add(Folder(id=id_, name=name, parent_id=self.parent_id))
+                    db_session.commit()
+                FolderSchema(id_, self._id, s)
+                print(f'folder with id: {a["href"][46:]}')
             else:
                 logging.warning(f'uknown entity: {a["href"]}')
 
